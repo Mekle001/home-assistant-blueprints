@@ -1,0 +1,348 @@
+blueprint:
+  name: Light Preset Cycle From Select
+  description: >
+    Cycle, reset, or apply machine-readable light presets stored in an
+    input_select. Supports tunable white, static color, and dynamic effect
+    presets for smart bulbs or light groups.
+  domain: automation
+  author: mgarlick / Codex
+  source_url: https://github.com/Mekle001/home-assistant-blueprints/blob/main/automation/light_preset_cycle.yaml
+  homeassistant:
+    min_version: 2024.6.0
+  input:
+    trigger_section:
+      name: Trigger
+      icon: mdi:gesture-tap-button
+      input:
+        button_trigger:
+          name: Button trigger
+          description: The device, event, MQTT, or state trigger that should run this preset action.
+          selector:
+            trigger:
+    target_section:
+      name: Preset target
+      icon: mdi:lightbulb-group
+      input:
+        preset_select:
+          name: Preset select
+          description: Hidden input_select containing preset strings such as ct|2700, hs|210|100|effect=colorloop, or fx|stop_colorloop.
+          selector:
+            entity:
+              domain: input_select
+        light_target:
+          name: Light target
+          description: The light entity, group, area, or device to apply the selected preset to.
+          selector:
+            target:
+              entity:
+                domain: light
+    behavior_section:
+      name: Behavior
+      icon: mdi:tune
+      collapsed: false
+      input:
+        preset_action:
+          name: Preset action
+          description: How the input_select should be changed before applying the preset.
+          default: next
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Next preset
+                  value: next
+                - label: Previous preset
+                  value: previous
+                - label: Reset to first preset
+                  value: reset
+                - label: Select specific preset
+                  value: select
+                - label: Select preset by index
+                  value: select_index
+                - label: Apply current preset
+                  value: apply
+        specific_preset:
+          name: Specific preset
+          description: Exact input_select option to choose when Preset action is Select specific preset.
+          default: ""
+          selector:
+            text:
+        preset_index:
+          name: Preset index
+          description: Zero-based option index to choose when Preset action is Select preset by index.
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+              mode: box
+        cycle:
+          name: Cycle at ends
+          description: Wrap next/previous around the ends of the preset list.
+          default: true
+          selector:
+            boolean:
+        transition:
+          name: Transition
+          description: Fade time in seconds when applying the preset.
+          default: 0.4
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+              unit_of_measurement: s
+              mode: slider
+        invalid_preset_behavior:
+          name: Invalid preset behavior
+          description: What to do if the selected option cannot be parsed.
+          default: log_warning
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Log warning
+                  value: log_warning
+                - label: Do nothing
+                  value: do_nothing
+
+mode: queued
+max: 10
+max_exceeded: silent
+
+trigger: !input button_trigger
+
+variables:
+  preset_select_entity: !input preset_select
+  preset_action_value: !input preset_action
+  specific_preset_value: !input specific_preset
+  preset_index_value: !input preset_index
+  cycle_enabled: !input cycle
+  transition_seconds: !input transition
+  invalid_behavior: !input invalid_preset_behavior
+
+action:
+  - choose:
+      - conditions: "{{ preset_action_value == 'next' }}"
+        sequence:
+          - service: input_select.select_next
+            target:
+              entity_id: "{{ preset_select_entity }}"
+            data:
+              cycle: "{{ cycle_enabled }}"
+      - conditions: "{{ preset_action_value == 'previous' }}"
+        sequence:
+          - service: input_select.select_previous
+            target:
+              entity_id: "{{ preset_select_entity }}"
+            data:
+              cycle: "{{ cycle_enabled }}"
+      - conditions: "{{ preset_action_value == 'reset' }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ preset_select_entity }}"
+            data:
+              option: "{{ state_attr(preset_select_entity, 'options')[0] }}"
+      - conditions: "{{ preset_action_value == 'select' and specific_preset_value != '' }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ preset_select_entity }}"
+            data:
+              option: "{{ specific_preset_value }}"
+      - conditions: "{{ preset_action_value == 'select' and specific_preset_value == '' }}"
+        sequence:
+          - service: system_log.write
+            data:
+              level: warning
+              message: >
+                Light preset cycle blueprint was asked to select a specific preset
+                for {{ preset_select_entity }}, but Specific preset was blank.
+          - stop: Specific preset was blank.
+      - conditions: "{{ preset_action_value == 'select_index' }}"
+        sequence:
+          - variables:
+              preset_options: "{{ state_attr(preset_select_entity, 'options') | list }}"
+              selected_index: "{{ preset_index_value | int }}"
+          - choose:
+              - conditions: "{{ selected_index >= 0 and selected_index < (preset_options | count) }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ preset_select_entity }}"
+                    data:
+                      option: "{{ preset_options[selected_index] }}"
+            default:
+              - service: system_log.write
+                data:
+                  level: warning
+                  message: >
+                    Light preset cycle blueprint was asked to select index
+                    {{ selected_index }} for {{ preset_select_entity }}, but the
+                    input_select has {{ preset_options | count }} options.
+              - stop: Preset index was out of range.
+
+  - variables:
+      preset: "{{ states(preset_select_entity) }}"
+
+  - variables:
+      parts: "{{ preset.split('|') }}"
+
+  - variables:
+      preset_type: "{{ parts[0] | lower if parts | count > 0 else '' }}"
+
+  - choose:
+      - conditions: "{{ preset_type == 'ct' and (parts | count) >= 2 }}"
+        sequence:
+          - variables:
+              modifier_parts: "{{ parts[2:] }}"
+          - variables:
+              brightness_value: >
+                {% set ns = namespace(value='') %}
+                {% for part in modifier_parts %}
+                  {% if part[:11] == 'brightness=' %}
+                    {% set ns.value = part[11:] %}
+                  {% elif part[:4] == 'bri=' %}
+                    {% set ns.value = part[4:] %}
+                  {% elif '=' not in part and ns.value == '' %}
+                    {% set ns.value = part %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.value }}
+              effect_value: >
+                {% set ns = namespace(value='') %}
+                {% for part in modifier_parts %}
+                  {% if part[:7] == 'effect=' %}
+                    {% set ns.value = part[7:] %}
+                  {% elif part[:3] == 'fx=' %}
+                    {% set ns.value = part[3:] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.value }}
+          - service: light.turn_on
+            target: !input light_target
+            data: >
+              {% set payload = {
+                'color_temp_kelvin': parts[1] | int,
+                'transition': transition_seconds | float
+              } %}
+              {% if brightness_value %}
+                {% set payload = dict(payload, brightness=brightness_value | int) %}
+              {% endif %}
+              {% if effect_value %}
+                {% set payload = dict(payload, effect=effect_value) %}
+              {% endif %}
+              {{ payload }}
+
+      - conditions: "{{ preset_type == 'hs' and (parts | count) >= 3 }}"
+        sequence:
+          - variables:
+              modifier_parts: "{{ parts[3:] }}"
+          - variables:
+              brightness_value: >
+                {% set ns = namespace(value='') %}
+                {% for part in modifier_parts %}
+                  {% if part[:11] == 'brightness=' %}
+                    {% set ns.value = part[11:] %}
+                  {% elif part[:4] == 'bri=' %}
+                    {% set ns.value = part[4:] %}
+                  {% elif '=' not in part and ns.value == '' %}
+                    {% set ns.value = part %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.value }}
+              effect_value: >
+                {% set ns = namespace(value='') %}
+                {% for part in modifier_parts %}
+                  {% if part[:7] == 'effect=' %}
+                    {% set ns.value = part[7:] %}
+                  {% elif part[:3] == 'fx=' %}
+                    {% set ns.value = part[3:] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.value }}
+          - service: light.turn_on
+            target: !input light_target
+            data: >
+              {% set payload = {
+                'hs_color': [parts[1] | float, parts[2] | float],
+                'transition': transition_seconds | float
+              } %}
+              {% if brightness_value %}
+                {% set payload = dict(payload, brightness=brightness_value | int) %}
+              {% endif %}
+              {% if effect_value %}
+                {% set payload = dict(payload, effect=effect_value) %}
+              {% endif %}
+              {{ payload }}
+
+      - conditions: "{{ preset_type == 'rgb' and (parts | count) >= 4 }}"
+        sequence:
+          - variables:
+              modifier_parts: "{{ parts[4:] }}"
+          - variables:
+              brightness_value: >
+                {% set ns = namespace(value='') %}
+                {% for part in modifier_parts %}
+                  {% if part[:11] == 'brightness=' %}
+                    {% set ns.value = part[11:] %}
+                  {% elif part[:4] == 'bri=' %}
+                    {% set ns.value = part[4:] %}
+                  {% elif '=' not in part and ns.value == '' %}
+                    {% set ns.value = part %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.value }}
+              effect_value: >
+                {% set ns = namespace(value='') %}
+                {% for part in modifier_parts %}
+                  {% if part[:7] == 'effect=' %}
+                    {% set ns.value = part[7:] %}
+                  {% elif part[:3] == 'fx=' %}
+                    {% set ns.value = part[3:] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.value }}
+          - service: light.turn_on
+            target: !input light_target
+            data: >
+              {% set payload = {
+                'rgb_color': [parts[1] | int, parts[2] | int, parts[3] | int],
+                'transition': transition_seconds | float
+              } %}
+              {% if brightness_value %}
+                {% set payload = dict(payload, brightness=brightness_value | int) %}
+              {% endif %}
+              {% if effect_value %}
+                {% set payload = dict(payload, effect=effect_value) %}
+              {% endif %}
+              {{ payload }}
+
+      - conditions: "{{ preset_type == 'bri' and (parts | count) >= 2 }}"
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness: "{{ parts[1] | int }}"
+              transition: "{{ transition_seconds | float }}"
+
+      - conditions: "{{ preset_type in ['fx', 'effect'] and (parts | count) >= 2 }}"
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              effect: "{{ parts[1] }}"
+
+    default:
+      - condition: template
+        value_template: "{{ invalid_behavior == 'log_warning' }}"
+      - service: system_log.write
+        data:
+          level: warning
+          message: >
+            Light preset cycle blueprint could not parse preset "{{ preset }}" from
+            {{ preset_select_entity }}. Expected ct|kelvin, hs|hue|saturation,
+            rgb|r|g|b, optional brightness/bri/effect modifiers, bri|brightness,
+            or fx|effect_name.
