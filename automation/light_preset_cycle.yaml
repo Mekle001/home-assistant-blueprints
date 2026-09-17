@@ -6,7 +6,7 @@ blueprint:
     presets for smart bulbs or light groups.
   domain: automation
   author: mgarlick / Codex
-  source_url: https://github.com/Mekle001/home-assistant-blueprints/blob/main/automation/light_preset_cycle.yaml
+  source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/light_preset_cycle.yaml
   homeassistant:
     min_version: 2024.6.0
   input:
