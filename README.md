@@ -37,6 +37,18 @@ bri|brightness
 fx|effect_name
 ```
 
+Each option may end with an optional human-readable label after `#`. The label
+is ignored when the preset is applied:
+
+```text
+ct|2700 # Soft white
+ct|3500 # Neutral white
+ct|5000 # Daylight
+ct|6500 # Cool daylight
+hs|0|100 # Red
+fx|colorloop # Party mode
+```
+
 Brightness is optional for `ct`, `hs`, and `rgb` presets. Use either the old
 positional form, such as `ct|2700|180`, or a named modifier, such as
 `ct|2700|brightness=180`. When brightness is omitted, Home Assistant changes
@@ -54,17 +66,18 @@ such as `blink`, `breathe`, `okay`, `channel_change`, `finish_effect`,
 Example hidden helper options:
 
 ```text
-ct|2700
-ct|3500
-ct|5000
-hs|210|100
-hs|30|100
-hs|210|100|effect=colorloop
-rgb|255|0|128
-rgb|255|0|128|brightness=180|effect=breathe
-bri|64
-fx|colorloop
-fx|stop_colorloop
+ct|2700 # Soft white
+ct|3500 # Neutral white
+ct|5000 # Daylight
+ct|6500 # Cool daylight
+hs|210|100 # Blue
+hs|30|100 # Amber
+hs|210|100|effect=colorloop # Blue color loop
+rgb|255|0|128 # Magenta
+rgb|255|0|128|brightness=180|effect=breathe # Magenta breathe
+bri|64 # Dim
+fx|colorloop # Party mode
+fx|stop_colorloop # Stop party mode
 ```
 
 Recommended gesture mapping:

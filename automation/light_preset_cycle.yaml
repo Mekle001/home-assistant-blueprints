@@ -3,7 +3,8 @@ blueprint:
   description: >
     Cycle, reset, or apply machine-readable light presets stored in an
     input_select. Supports tunable white, static color, and dynamic effect
-    presets for smart bulbs or light groups.
+    presets for smart bulbs or light groups. Presets may include an optional
+    human-readable label after a # character.
   domain: automation
   author: mgarlick / Codex
   source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/light_preset_cycle.yaml
@@ -25,7 +26,7 @@ blueprint:
       input:
         preset_select:
           name: Preset select
-          description: Hidden input_select containing preset strings such as ct|2700, hs|210|100|effect=colorloop, or fx|stop_colorloop.
+          description: Hidden input_select containing preset strings such as ct|2700 # Soft white, hs|210|100 # Blue, or fx|colorloop # Party mode.
           selector:
             entity:
               domain: input_select
@@ -185,7 +186,10 @@ action:
               - stop: Preset index was out of range.
 
   - variables:
-      preset: "{{ states(preset_select_entity) }}"
+      preset_option: "{{ states(preset_select_entity) }}"
+
+  - variables:
+      preset: "{{ preset_option.split('#', 1)[0] | trim }}"
 
   - variables:
       parts: "{{ preset.split('|') }}"
@@ -342,7 +346,7 @@ action:
         data:
           level: warning
           message: >
-            Light preset cycle blueprint could not parse preset "{{ preset }}" from
+            Light preset cycle blueprint could not parse preset "{{ preset_option }}" from
             {{ preset_select_entity }}. Expected ct|kelvin, hs|hue|saturation,
             rgb|r|g|b, optional brightness/bri/effect modifiers, bri|brightness,
-            or fx|effect_name.
+            or fx|effect_name, optionally followed by # and a label.
