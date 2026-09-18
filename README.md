@@ -1,5 +1,28 @@
 # Home Assistant Blueprints
 
+## Inovelli Red VZW30 Fan Preset Timer
+
+[![Open your Home Assistant instance and show the blueprint import dialog with this blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Finovelli_red_fan_timer.yaml)
+
+Import URL:
+
+`https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/inovelli_red_fan_timer.yaml`
+
+Blueprint source:
+
+`automation/inovelli_red_fan_timer.yaml`
+
+This Z-Wave JS automation blueprint provides the same preset timer and
+seven-segment countdown as the VZM30 version for the VZW30-SN Red On/Off
+switch. Select the Scene 001 paddle-up event, Scene 002 paddle-down event, the
+fan load entity, and a dedicated timer helper. Leave the switch's built-in
+Advanced Timer Mode disabled.
+
+The countdown uses the VZW30's individual LED effect parameters 64, 69, 74,
+79, 84, 89, and 94 through Z-Wave JS partial configuration writes. The whole
+bar effect at parameter 99 restores the normal LED state when the timer is
+cancelled or expires.
+
 ## Inovelli Blue VZM30 Fan Preset Timer
 
 [![Open your Home Assistant instance and show the blueprint import dialog with this blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Finovelli_blue_fan_timer.yaml)
