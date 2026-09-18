@@ -25,6 +25,9 @@ so the switch returns to its normal LED configuration.
 Create a dedicated Home Assistant timer helper for each fan before configuring
 the blueprint. Select the switch's `event` action entity and its Zigbee2MQTT
 `light` load entity. Leave the switch's built-in Fan Timer Mode disabled.
+The blueprint normally calculates the switch topic as `zigbee2mqtt/<device
+name>`; an optional full-topic override handles renamed devices or a custom
+Zigbee2MQTT base topic.
 
 Zigbee2MQTT exposes the VZM35-SN LED-effect composites to Home Assistant as
 read-only sensors. The blueprint therefore uses Home Assistant entities for

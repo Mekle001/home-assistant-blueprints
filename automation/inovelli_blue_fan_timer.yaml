@@ -34,8 +34,12 @@ blueprint:
             entity:
               domain: timer
         zigbee2mqtt_topic:
-          name: Zigbee2MQTT base topic
-          description: Base topic for the switch, such as zigbee2mqtt/Guest Bathroom Fan.
+          name: Zigbee2MQTT topic override
+          description: >
+            Optional full base topic for the switch, such as
+            zigbee2mqtt/Guest Bathroom Fan. Leave blank to calculate
+            zigbee2mqtt/<device name> from the selected action entity.
+          default: ""
           selector:
             text:
 
@@ -178,9 +182,16 @@ trigger:
     id: timer_finished
 
 variables:
+  action_event: !input action_entity
   fan_load: !input fan_load_entity
   timer: !input timer_entity
-  mqtt_base_topic: !input zigbee2mqtt_topic
+  configured_mqtt_topic: !input zigbee2mqtt_topic
+  mqtt_base_topic: >-
+    {% if configured_mqtt_topic | trim %}
+      {{ configured_mqtt_topic | trim | regex_replace('/$', '') }}
+    {% else %}
+      zigbee2mqtt/{{ device_attr(device_id(action_event), 'name') }}
+    {% endif %}
   preset_minutes:
     - !input preset_1_minutes
     - !input preset_2_minutes
