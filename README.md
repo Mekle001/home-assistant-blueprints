@@ -1,6 +1,6 @@
 # Home Assistant Blueprints
 
-## Inovelli Blue Fan Preset Timer
+## Inovelli Blue VZM30 Fan Preset Timer
 
 [![Open your Home Assistant instance and show the blueprint import dialog with this blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Finovelli_blue_fan_timer.yaml)
 
@@ -12,7 +12,7 @@ Blueprint source:
 
 `automation/inovelli_blue_fan_timer.yaml`
 
-This Zigbee2MQTT automation blueprint replaces the VZM35-SN's built-in fan
+This Zigbee2MQTT automation blueprint replaces the VZM30-SN's built-in fan
 timer. A paddle-up press starts at 5 minutes; each additional press advances
 through 10, 15, and 30 minutes to a four-hour maximum run time. Paddle down
 cancels the timer and turns the fan off. All durations are configurable.
@@ -29,7 +29,7 @@ The blueprint normally calculates the switch topic as `zigbee2mqtt/<device
 name>`; an optional full-topic override handles renamed devices or a custom
 Zigbee2MQTT base topic.
 
-Zigbee2MQTT exposes the VZM35-SN LED-effect composites to Home Assistant as
+Zigbee2MQTT exposes the VZM30-SN LED-effect composites to Home Assistant as
 read-only sensors. The blueprint therefore uses Home Assistant entities for
 button events, the load, and the timer, while publishing only the temporary
 per-LED effect commands through Home Assistant's MQTT service.

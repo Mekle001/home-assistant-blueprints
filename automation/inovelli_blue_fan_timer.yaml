@@ -1,7 +1,7 @@
 blueprint:
-  name: Inovelli Blue Fan Preset Timer
+  name: Inovelli Blue VZM30 Fan Preset Timer
   description: >
-    Replace the VZM35-SN firmware fan timer with a Home Assistant timer.
+    Replace the VZM30-SN firmware fan timer with a Home Assistant timer.
     Each paddle-up press advances through five run-time presets and refills a
     seven-segment LED countdown. Paddle down cancels the timer and turns the
     fan off. Requires Zigbee2MQTT and an input timer helper.
@@ -17,13 +17,13 @@ blueprint:
       input:
         action_entity:
           name: Switch action entity
-          description: Event entity that reports paddle actions from the VZM35-SN.
+          description: Event entity that reports paddle actions from the VZM30-SN.
           selector:
             entity:
               domain: event
         fan_load_entity:
           name: Fan load entity
-          description: Light entity used by Zigbee2MQTT for the VZM35-SN load.
+          description: Light entity used by Zigbee2MQTT for the VZM30-SN load.
           selector:
             entity:
               domain: light
