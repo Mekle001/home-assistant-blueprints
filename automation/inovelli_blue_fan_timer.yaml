@@ -220,28 +220,32 @@ action:
           - service: timer.cancel
             target:
               entity_id: "{{ timer }}"
-          - service: light.turn_off
-            target:
-              entity_id: "{{ fan_load }}"
           - service: mqtt.publish
             data:
               topic: "{{ mqtt_base_topic }}/set"
               payload: >-
                 {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
                 'level': 0, 'duration': 1}} | to_json }}
+          - delay:
+              milliseconds: 500
+          - service: light.turn_off
+            target:
+              entity_id: "{{ fan_load }}"
           - stop: Fan timer cancelled from the paddle.
 
       - conditions: "{{ trigger.id == 'timer_finished' }}"
         sequence:
-          - service: light.turn_off
-            target:
-              entity_id: "{{ fan_load }}"
           - service: mqtt.publish
             data:
               topic: "{{ mqtt_base_topic }}/set"
               payload: >-
                 {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
                 'level': 0, 'duration': 1}} | to_json }}
+          - delay:
+              milliseconds: 500
+          - service: light.turn_off
+            target:
+              entity_id: "{{ fan_load }}"
           - stop: Fan timer completed.
 
       - conditions: >-
@@ -326,13 +330,16 @@ action:
   - delay:
       seconds: "{{ segment_seconds | float }}"
 
-  - service: light.turn_off
-    target:
-      entity_id: "{{ fan_load }}"
-
   - service: mqtt.publish
     data:
       topic: "{{ mqtt_base_topic }}/set"
       payload: >-
         {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
         'level': 0, 'duration': 1}} | to_json }}
+
+  - delay:
+      milliseconds: 500
+
+  - service: light.turn_off
+    target:
+      entity_id: "{{ fan_load }}"
