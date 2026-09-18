@@ -14,9 +14,10 @@ Blueprint source:
 
 This Z-Wave JS automation blueprint provides the same preset timer and
 seven-segment countdown as the VZM30 version for the VZW30-SN Red On/Off
-switch. Select the Scene 001 paddle-up event, Scene 002 paddle-down event, the
-fan load entity, and a dedicated timer helper. Leave the switch's built-in
-Advanced Timer Mode disabled.
+switch. Select the VZW30 device and a dedicated timer helper; the blueprint
+listens for the device's Scene 001 and Scene 002 events and derives its native
+load entity automatically. Leave the switch's built-in Advanced Timer Mode
+disabled.
 
 The countdown uses the VZW30's individual LED effect parameters 64, 69, 74,
 79, 84, 89, and 94 through Z-Wave JS partial configuration writes. The whole
@@ -46,8 +47,9 @@ the fan turns off. The blueprint uses temporary LED effects, then clears them
 so the switch returns to its normal LED configuration.
 
 Create a dedicated Home Assistant timer helper for each fan before configuring
-the blueprint. Select the switch's `event` action entity and its Zigbee2MQTT
-`light` load entity. Leave the switch's built-in Fan Timer Mode disabled.
+the blueprint. Select the VZM30 device and the timer helper; the blueprint
+derives the switch's Zigbee2MQTT `light` load entity. Leave the switch's
+built-in Fan Timer Mode disabled.
 The blueprint normally calculates the switch topic as `zigbee2mqtt/<device
 name>`; an optional full-topic override handles renamed devices or a custom
 Zigbee2MQTT base topic.

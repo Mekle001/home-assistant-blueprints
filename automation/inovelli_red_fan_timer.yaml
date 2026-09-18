@@ -15,27 +15,13 @@ blueprint:
       name: Device
       icon: mdi:fan
       input:
-        up_event_entity:
-          name: Paddle-up scene entity
-          description: Scene 001 event entity from the VZW30-SN.
+        switch_device:
+          name: Fan switch
+          description: Inovelli Red VZW30-SN device connected to the fan.
           selector:
-            entity:
-              domain: event
-        down_event_entity:
-          name: Paddle-down scene entity
-          description: Scene 002 event entity from the VZW30-SN.
-          selector:
-            entity:
-              domain: event
-        fan_load_entity:
-          name: Fan load entity
-          description: Fan, light, or switch entity used for the VZW30-SN load.
-          selector:
-            entity:
-              domain:
-                - fan
-                - light
-                - switch
+            device:
+              integration: zwave_js
+              manufacturer: Inovelli
         timer_entity:
           name: Timer helper
           description: Timer helper dedicated to this fan.
@@ -171,11 +157,23 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  - platform: state
-    entity_id: !input up_event_entity
+  - platform: event
+    event_type: zwave_js_value_notification
+    event_data:
+      device_id: !input switch_device
+      command_class: 91
+      property: scene
+      property_key: "001"
+      value: KeyPressed
     id: paddle_up
-  - platform: state
-    entity_id: !input down_event_entity
+  - platform: event
+    event_type: zwave_js_value_notification
+    event_data:
+      device_id: !input switch_device
+      command_class: 91
+      property: scene
+      property_key: "002"
+      value: KeyPressed
     id: paddle_down
   - platform: event
     event_type: timer.finished
@@ -184,10 +182,12 @@ trigger:
     id: timer_finished
 
 variables:
-  up_scene: !input up_event_entity
-  fan_load: !input fan_load_entity
+  switch_device_id: !input switch_device
+  fan_load: >-
+    {{ device_entities(switch_device_id)
+    | select('match', '^light\\.') | first | default('', true) }}
   timer: !input timer_entity
-  zwave_device: "{{ device_id(up_scene) }}"
+  zwave_device: "{{ switch_device_id }}"
   led_parameters: [64, 69, 74, 79, 84, 89, 94]
   preset_minutes:
     - !input preset_1_minutes
@@ -205,14 +205,8 @@ variables:
   countdown_intensity: !input led_intensity
 
 action:
-  - variables:
-      switch_action: >-
-        {{ trigger.to_state.attributes.event_type
-        if trigger.id in ['paddle_up', 'paddle_down'] and
-        trigger.to_state is not none else '' }}
-
   - choose:
-      - conditions: "{{ trigger.id == 'paddle_down' and switch_action == 'KeyPressed' }}"
+      - conditions: "{{ trigger.id == 'paddle_down' }}"
         sequence:
           - service: timer.cancel
             target:
@@ -246,12 +240,6 @@ action:
             target:
               entity_id: "{{ fan_load }}"
           - stop: Fan timer completed.
-
-      - conditions: >-
-          {{ trigger.id in ['paddle_up', 'paddle_down'] and
-          switch_action != 'KeyPressed' }}
-        sequence:
-          - stop: Paddle action is not used by the fan timer.
 
   - variables:
       current_duration_seconds: >-

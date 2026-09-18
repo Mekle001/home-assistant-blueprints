@@ -15,18 +15,13 @@ blueprint:
       name: Device
       icon: mdi:fan
       input:
-        action_entity:
-          name: Switch action entity
-          description: Event entity that reports paddle actions from the VZM30-SN.
+        switch_device:
+          name: Fan switch
+          description: Inovelli Blue VZM30-SN device connected to the fan.
           selector:
-            entity:
-              domain: event
-        fan_load_entity:
-          name: Fan load entity
-          description: Light entity used by Zigbee2MQTT for the VZM30-SN load.
-          selector:
-            entity:
-              domain: light
+            device:
+              integration: mqtt
+              manufacturer: Inovelli
         timer_entity:
           name: Timer helper
           description: Timer helper dedicated to this fan.
@@ -38,7 +33,7 @@ blueprint:
           description: >
             Optional full base topic for the switch, such as
             zigbee2mqtt/Guest Bathroom Fan. Leave blank to calculate
-            zigbee2mqtt/<device name> from the selected action entity.
+            zigbee2mqtt/<device name> from the selected switch device.
           default: ""
           selector:
             text:
@@ -172,9 +167,18 @@ mode: restart
 max_exceeded: silent
 
 trigger:
-  - platform: state
-    entity_id: !input action_entity
-    id: switch_action
+  - platform: device
+    device_id: !input switch_device
+    domain: mqtt
+    type: action
+    subtype: up_single
+    id: paddle_up
+  - platform: device
+    device_id: !input switch_device
+    domain: mqtt
+    type: action
+    subtype: down_single
+    id: paddle_down
   - platform: event
     event_type: timer.finished
     event_data:
@@ -182,15 +186,17 @@ trigger:
     id: timer_finished
 
 variables:
-  action_event: !input action_entity
-  fan_load: !input fan_load_entity
+  switch_device_id: !input switch_device
+  fan_load: >-
+    {{ device_entities(switch_device_id)
+    | select('match', '^light\\.') | first | default('', true) }}
   timer: !input timer_entity
   configured_mqtt_topic: !input zigbee2mqtt_topic
   mqtt_base_topic: >-
     {% if configured_mqtt_topic | trim %}
       {{ configured_mqtt_topic | trim | regex_replace('/$', '') }}
     {% else %}
-      zigbee2mqtt/{{ device_attr(device_id(action_event), 'name') }}
+      zigbee2mqtt/{{ device_attr(switch_device_id, 'name') }}
     {% endif %}
   preset_minutes:
     - !input preset_1_minutes
@@ -208,14 +214,8 @@ variables:
   countdown_intensity: !input led_intensity
 
 action:
-  - variables:
-      switch_action: >-
-        {{ trigger.to_state.attributes.event_type
-        if trigger.id == 'switch_action' and trigger.to_state is not none
-        else '' }}
-
   - choose:
-      - conditions: "{{ trigger.id == 'switch_action' and switch_action == 'down_single' }}"
+      - conditions: "{{ trigger.id == 'paddle_down' }}"
         sequence:
           - service: timer.cancel
             target:
@@ -247,12 +247,6 @@ action:
             target:
               entity_id: "{{ fan_load }}"
           - stop: Fan timer completed.
-
-      - conditions: >-
-          {{ trigger.id == 'switch_action' and
-          switch_action not in ['up_single', 'down_single'] }}
-        sequence:
-          - stop: Paddle action is not used by the fan timer.
 
   - variables:
       current_duration_seconds: >-
