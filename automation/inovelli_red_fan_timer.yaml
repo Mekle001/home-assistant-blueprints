@@ -163,7 +163,7 @@ trigger:
       device_id: !input switch_device
       command_class: 91
       property: scene
-      property_key: "001"
+      property_key: "002"
       value: KeyPressed
     id: paddle_up
   - platform: event
@@ -172,7 +172,7 @@ trigger:
       device_id: !input switch_device
       command_class: 91
       property: scene
-      property_key: "002"
+      property_key: "001"
       value: KeyPressed
     id: paddle_down
   - platform: event
