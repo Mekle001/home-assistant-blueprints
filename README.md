@@ -24,6 +24,11 @@ The countdown uses the VZW30's individual LED effect parameters 64, 69, 74,
 blueprint clears those same seven individual effects when the timer is
 cancelled or expires, restoring the normal LED state.
 
+Expired countdown segments remain under a solid notification at zero intensity
+until final cleanup. Clearing or disabling an individual effect during the
+countdown would reveal the switch's normal load-on color instead of leaving the
+segment dark.
+
 ## Inovelli Blue VZM30 Fan Preset Timer
 
 [![Open your Home Assistant instance and show the blueprint import dialog with this blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Finovelli_blue_fan_timer.yaml)

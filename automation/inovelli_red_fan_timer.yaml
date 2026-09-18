@@ -282,12 +282,6 @@ action:
     target:
       entity_id: "{{ fan_load }}"
 
-  - service: timer.start
-    target:
-      entity_id: "{{ timer }}"
-    data:
-      duration: "{{ timer_duration }}"
-
   - repeat:
       count: 7
       sequence:
@@ -301,6 +295,12 @@ action:
               "65280": "{{ countdown_intensity | int }}"
               "16711680": "{{ selected_color | int }}"
               "4278190080": 1
+
+  - service: timer.start
+    target:
+      entity_id: "{{ timer }}"
+    data:
+      duration: "{{ timer_duration }}"
 
   - repeat:
       count: 6
@@ -316,7 +316,7 @@ action:
               "255": 255
               "65280": 0
               "16711680": 0
-              "4278190080": 0
+              "4278190080": 1
 
   - service: zwave_js.bulk_set_partial_config_parameters
     target:
