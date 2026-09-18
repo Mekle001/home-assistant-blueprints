@@ -1,5 +1,36 @@
 # Home Assistant Blueprints
 
+## Inovelli Blue Fan Preset Timer
+
+[![Open your Home Assistant instance and show the blueprint import dialog with this blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Finovelli_blue_fan_timer.yaml)
+
+Import URL:
+
+`https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/inovelli_blue_fan_timer.yaml`
+
+Blueprint source:
+
+`automation/inovelli_blue_fan_timer.yaml`
+
+This Zigbee2MQTT automation blueprint replaces the VZM35-SN's built-in fan
+timer. A paddle-up press starts at 5 minutes; each additional press advances
+through 10, 15, and 30 minutes to a four-hour maximum run time. Paddle down
+cancels the timer and turns the fan off. All durations are configurable.
+
+The seven switch LEDs show proportional time remaining. Timer presets default
+to green, cyan, yellow, orange, and violet; the final segment pulses red before
+the fan turns off. The blueprint uses temporary LED effects, then clears them
+so the switch returns to its normal LED configuration.
+
+Create a dedicated Home Assistant timer helper for each fan before configuring
+the blueprint. Select the switch's `event` action entity and its Zigbee2MQTT
+`light` load entity. Leave the switch's built-in Fan Timer Mode disabled.
+
+Zigbee2MQTT exposes the VZM35-SN LED-effect composites to Home Assistant as
+read-only sensors. The blueprint therefore uses Home Assistant entities for
+button events, the load, and the timer, while publishing only the temporary
+per-LED effect commands through Home Assistant's MQTT service.
+
 ## Light Preset Cycle From Select
 
 [![Open your Home Assistant instance and show the blueprint import dialog with this blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Flight_preset_cycle.yaml)
