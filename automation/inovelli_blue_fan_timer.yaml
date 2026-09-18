@@ -291,13 +291,6 @@ action:
     data:
       duration: "{{ timer_duration }}"
 
-  - service: mqtt.publish
-    data:
-      topic: "{{ mqtt_base_topic }}/set"
-      payload: >-
-        {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
-        'level': 0, 'duration': 1}} | to_json }}
-
   - repeat:
       count: 7
       sequence:
@@ -319,8 +312,8 @@ action:
             topic: "{{ mqtt_base_topic }}/set"
             payload: >-
               {{ {'individual_led_effect': {'led': 8 - repeat.index,
-              'effect': 'clear_effect', 'color': 0, 'level': 0,
-              'duration': 1}} | to_json }}
+              'effect': 'off', 'color': 0, 'level': 0,
+              'duration': 255}} | to_json }}
 
   - service: mqtt.publish
     data:
