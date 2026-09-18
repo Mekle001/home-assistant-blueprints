@@ -211,13 +211,16 @@ action:
           - service: timer.cancel
             target:
               entity_id: "{{ timer }}"
-          - service: zwave_js.set_config_parameter
-            target:
-              device_id: "{{ zwave_device }}"
-            data:
-              parameter: 99
-              bitmask: 4278190080
-              value: 255
+          - repeat:
+              count: 7
+              sequence:
+                - service: zwave_js.set_config_parameter
+                  target:
+                    device_id: "{{ zwave_device }}"
+                  data:
+                    parameter: "{{ led_parameters[repeat.index - 1] }}"
+                    bitmask: 4278190080
+                    value: 255
           - delay:
               milliseconds: 500
           - service: homeassistant.turn_off
@@ -227,13 +230,16 @@ action:
 
       - conditions: "{{ trigger.id == 'timer_finished' }}"
         sequence:
-          - service: zwave_js.set_config_parameter
-            target:
-              device_id: "{{ zwave_device }}"
-            data:
-              parameter: 99
-              bitmask: 4278190080
-              value: 255
+          - repeat:
+              count: 7
+              sequence:
+                - service: zwave_js.set_config_parameter
+                  target:
+                    device_id: "{{ zwave_device }}"
+                  data:
+                    parameter: "{{ led_parameters[repeat.index - 1] }}"
+                    bitmask: 4278190080
+                    value: 255
           - delay:
               milliseconds: 500
           - service: homeassistant.turn_off
@@ -326,13 +332,16 @@ action:
   - delay:
       seconds: "{{ segment_seconds | float }}"
 
-  - service: zwave_js.set_config_parameter
-    target:
-      device_id: "{{ zwave_device }}"
-    data:
-      parameter: 99
-      bitmask: 4278190080
-      value: 255
+  - repeat:
+      count: 7
+      sequence:
+        - service: zwave_js.set_config_parameter
+          target:
+            device_id: "{{ zwave_device }}"
+          data:
+            parameter: "{{ led_parameters[repeat.index - 1] }}"
+            bitmask: 4278190080
+            value: 255
 
   - delay:
       milliseconds: 500

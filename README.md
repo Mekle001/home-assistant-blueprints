@@ -20,9 +20,9 @@ load entity automatically. Leave the switch's built-in Advanced Timer Mode
 disabled.
 
 The countdown uses the VZW30's individual LED effect parameters 64, 69, 74,
-79, 84, 89, and 94 through Z-Wave JS partial configuration writes. The whole
-bar effect at parameter 99 restores the normal LED state when the timer is
-cancelled or expires.
+79, 84, 89, and 94 through Z-Wave JS partial configuration writes. The
+blueprint clears those same seven individual effects when the timer is
+cancelled or expires, restoring the normal LED state.
 
 ## Inovelli Blue VZM30 Fan Preset Timer
 
