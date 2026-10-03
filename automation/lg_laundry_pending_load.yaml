@@ -1,0 +1,104 @@
+blueprint:
+  name: LG laundry — remember completed load
+  description: Remember genuine running-to-end transitions until acknowledged or a
+    new cycle begins. Never infer completion from off, unavailable, idle, or initial
+    end. Separate from phone notifications and LED displays. Local v1; source publication
+    pending.
+  domain: automation
+  author: Mekle001
+  source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/lg_laundry_pending_load.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    cycle_sensor:
+      name: LG cycle-status sensor
+      selector:
+        entity:
+          domain:
+          - sensor
+          multiple: false
+          reorder: false
+    pending_helper:
+      name: Awaiting-attention helper
+      selector:
+        entity:
+          domain:
+          - input_boolean
+          multiple: false
+          reorder: false
+    running_states:
+      name: Actual running states
+      selector:
+        select:
+          options:
+          - running
+          - cooling
+          - detecting
+          - spinning
+          - rinsing
+          - soaking
+          - drying
+          - prewash
+          - refreshing
+          - dispensing
+          - steam_softening
+          - rinse_hold
+          - add_drain
+          - cool_down
+          multiple: true
+          custom_value: true
+          sort: false
+    completion_from_states:
+      name: States allowed before genuine completion
+      selector:
+        select:
+          options:
+          - running
+          - cooling
+          - detecting
+          - pause
+          - spinning
+          - rinsing
+          - soaking
+          - drying
+          - prewash
+          - refreshing
+          - dispensing
+          - steam_softening
+          - rinse_hold
+          - add_drain
+          - cool_down
+          multiple: true
+          custom_value: true
+          sort: false
+mode: queued
+max: 10
+trace:
+  stored_traces: 20
+triggers:
+- trigger: state
+  entity_id: !input cycle_sensor
+  to: !input running_states
+  id: active
+- trigger: state
+  entity_id: !input cycle_sensor
+  from: !input completion_from_states
+  to: end
+  id: finished
+conditions: []
+actions:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: active
+    sequence:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: !input pending_helper
+  - conditions:
+    - condition: trigger
+      id: finished
+    sequence:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: !input pending_helper

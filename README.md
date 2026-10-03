@@ -158,3 +158,36 @@ specific jumps, use either:
   `hs|210|100|effect=colorloop`
 - `select_index`: enter the zero-based option index, where `0` is the first
   option in the `input_select`
+
+## Appliance Group Displays
+
+[Import blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Fappliance_group_display.yaml)
+
+Source: `automation/appliance_group_display.yaml`
+
+Displays laundry or dishwasher status on one or several Inovelli Blue
+Zigbee2MQTT switches, using a configurable LED script. Running loads pulse;
+completed loads stay solid until acknowledged. Laundry uses cyan at the bottom
+and orange at the top; dishwashers use magenta, with right at the bottom and
+left at the top. Refrigerator warnings use the middle LEDs. Reserve each
+switch for one display group. Completion tracking and phone notifications
+remain separate automations.
+
+Defaults include 60% daytime brightness, 10% during quiet hours with the switch
+off, and 30% caps for cyan and magenta. Switches turned on during quiet hours
+use the daytime levels. Targets and acknowledgement event entities are lists.
+
+Requires the configured Inovelli Blue LED control script, pending-load helpers,
+and appliance status entities. Minimum Home Assistant version: 2026.7.
+
+## LG Laundry Pending Load
+
+[Import blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FMekle001%2Fhome-assistant-blueprints%2Fmain%2Fautomation%2Flg_laundry_pending_load.yaml)
+
+Source: `automation/lg_laundry_pending_load.yaml`
+
+Tracks a genuine running-to-end transition in an LG laundry status sensor and
+latches an input_boolean until acknowledgement or a new cycle. Off, unavailable,
+idle, and an initial end state do not imply completion. Use one instance per
+appliance; LED displays and phone routing are separate. Minimum Home Assistant
+version: 2024.10.

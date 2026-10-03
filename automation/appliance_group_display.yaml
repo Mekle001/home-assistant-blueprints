@@ -1,0 +1,378 @@
+blueprint:
+  name: Appliance group — consistent Inovelli displays
+  description: 'Local v1. Laundry cyan bottom1–2 and orange top6–7. Dishes magenta
+    bottom/right and top/left. Pulse running; solid completion; clear idle. Red fridge
+    warnings middle3–5. Pedestal display deferred. One owner per switch; lists must
+    not overlap another instance. Add display switches and corresponding config-button
+    event entities to extend group. Uses an Inovelli Blue Zigbee2MQTT LED script.
+    Cycle tracking and phone routing are separate. Source publication pending.
+
+    Calibrated displays: day or switch on60%; quiet hours with switch off10%. Laundry
+    orange10. Dark separators beside active appliance channels; fridge warnings retain
+    middle LEDs3–5.
+
+    Washer cyan brightness capped30% by default to avoid overwhelming native blue;
+    other colors keep day60/quietoff10%.
+
+    Dishwasher magenta also capped30% by default after in-person calibration.'
+  domain: automation
+  author: Mekle001
+  source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/appliance_group_display.yaml
+  homeassistant:
+    min_version: 2026.7.0
+  input:
+    indicator_switches:
+      name: Indicator switches
+      selector:
+        entity:
+          domain:
+          - light
+          - fan
+          multiple: true
+          reorder: false
+    acknowledgment_events:
+      name: Config-button event entities
+      selector:
+        entity:
+          domain:
+          - event
+          multiple: true
+          reorder: false
+    led_script:
+      name: LED script
+      selector:
+        entity:
+          domain:
+          - script
+          multiple: false
+          reorder: false
+    display_profile:
+      name: Appliance group
+      selector:
+        select:
+          options:
+          - Laundry
+          - Kitchen dishes
+          multiple: false
+          custom_value: false
+          sort: false
+    first_pending:
+      name: Bottom appliance completion helpers
+      selector:
+        entity:
+          domain:
+          - input_boolean
+          - input_select
+          multiple: true
+          reorder: false
+    first_running:
+      name: Bottom appliance cycle sensors
+      default: []
+      selector:
+        entity:
+          domain:
+          - sensor
+          multiple: true
+          reorder: false
+    first_running_states:
+      name: Bottom running states
+      default:
+      - running
+      selector:
+        select:
+          options:
+          - running
+          multiple: true
+          custom_value: true
+          sort: false
+    first_acknowledge:
+      name: Acknowledge completed bottom appliance
+      default: []
+      selector:
+        action: {}
+    second_pending:
+      name: Top appliance completion helpers
+      default: []
+      selector:
+        entity:
+          domain:
+          - input_boolean
+          - input_select
+          multiple: true
+          reorder: false
+    second_running:
+      name: Top appliance cycle sensors
+      default: []
+      selector:
+        entity:
+          domain:
+          - sensor
+          multiple: true
+          reorder: false
+    second_running_states:
+      name: Top running states
+      default:
+      - running
+      - cooling
+      - detecting
+      selector:
+        select:
+          options:
+          - running
+          - cooling
+          - detecting
+          multiple: true
+          custom_value: true
+          sort: false
+    second_acknowledge:
+      name: Acknowledge completed top appliance
+      default: []
+      selector:
+        action: {}
+    warning_doors:
+      name: Fridge doors — ordered to match stage helpers
+      default: []
+      selector:
+        entity:
+          domain:
+          - binary_sensor
+          multiple: true
+          reorder: false
+    warning_stages:
+      name: Fridge stage helpers — same order
+      default: []
+      selector:
+        entity:
+          domain:
+          - input_select
+          multiple: true
+          reorder: false
+    quiet_start:
+      name: Quiet-hours start
+      selector:
+        entity:
+          domain:
+          - input_datetime
+          multiple: false
+          reorder: false
+    quiet_end:
+      name: Quiet-hours end
+      selector:
+        entity:
+          domain:
+          - input_datetime
+          multiple: false
+          reorder: false
+    day_level:
+      name: Day brightness
+      default: 60
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          unit_of_measurement: '%'
+          step: 1.0
+          mode: slider
+    night_level:
+      name: Quiet brightness
+      default: 10
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          unit_of_measurement: '%'
+          step: 1.0
+          mode: slider
+    cyan_level:
+      name: Washer cyan brightness
+      description: Maximum cyan brightness during daytime or while the switch is on.
+        Quiet hours with switch off use the lower quiet brightness.
+      default: 30
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          unit_of_measurement: '%'
+          step: 1.0
+          mode: slider
+    magenta_level:
+      name: Dishwasher magenta brightness
+      description: Maximum magenta brightness during daytime or while switch is on.
+        Quiet hours with switch off use the lower quiet brightness.
+      default: 30
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          unit_of_measurement: '%'
+          step: 1.0
+          mode: slider
+mode: queued
+max: 30
+trace:
+  stored_traces: 30
+variables:
+  indicator_switches: !input indicator_switches
+  acknowledgment_events: !input acknowledgment_events
+  led_script: !input led_script
+  display_profile: !input display_profile
+  first_pending: !input first_pending
+  first_running: !input first_running
+  first_running_states: !input first_running_states
+  second_pending: !input second_pending
+  second_running: !input second_running
+  second_running_states: !input second_running_states
+  warning_doors: !input warning_doors
+  warning_stages: !input warning_stages
+  quiet_start: !input quiet_start
+  quiet_end: !input quiet_end
+  day_level: !input day_level
+  night_level: !input night_level
+  cyan_level: !input cyan_level
+  magenta_level: !input magenta_level
+triggers:
+- trigger: state
+  entity_id:
+  - !input quiet_start
+  - !input quiet_end
+  to:
+- trigger: state
+  entity_id: !input warning_stages
+  to:
+- trigger: state
+  entity_id: !input warning_doors
+  to:
+- trigger: state
+  entity_id: !input second_running
+  to:
+- trigger: state
+  entity_id: !input second_pending
+  to:
+- trigger: state
+  entity_id: !input first_running
+  to:
+- trigger: state
+  entity_id: !input first_pending
+  to:
+- trigger: state
+  entity_id: !input indicator_switches
+  from:
+  - unknown
+  - unavailable
+  to:
+  - 'on'
+  - 'off'
+- trigger: event.received
+  target:
+    entity_id: !input acknowledgment_events
+  options:
+    event_type:
+    - double
+  id: acknowledge
+- trigger: time
+  at: !input quiet_start
+- trigger: time
+  at: !input quiet_end
+- trigger: homeassistant
+  event: start
+- trigger: event
+  event_type: automation_reloaded
+- trigger: state
+  entity_id: !input indicator_switches
+  from: 'off'
+  to: 'on'
+- trigger: state
+  entity_id: !input indicator_switches
+  from: 'on'
+  to: 'off'
+conditions: []
+actions:
+- if:
+  - condition: trigger
+    id: acknowledge
+  then:
+  - condition: template
+    value_template: '{{ trigger.entity_id is defined and trigger.entity_id in acknowledgment_events
+      and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.attributes.get(''button'')
+      == ''config'' }}'
+  - if:
+    - condition: state
+      entity_id: !input first_pending
+      state:
+      - 'on'
+      - Clean
+      match: any
+    then: !input first_acknowledge
+  - if:
+    - condition: state
+      entity_id: !input second_pending
+      state:
+      - 'on'
+      - Clean
+      match: any
+    then: !input second_acknowledge
+  - delay:
+      seconds: 1
+- variables:
+    quiet_indicator_level: !input day_level
+- if:
+  - condition: time
+    after: !input quiet_start
+    before: !input quiet_end
+  then:
+  - variables:
+      quiet_indicator_level: !input night_level
+- variables:
+    warning_active: '{% set ns = namespace(active=false) %}{% for door in warning_doors
+      %}{% set idx = loop.index0 %}{% if idx < warning_stages|count and is_state(door,''on'')
+      and states(warning_stages[idx]) in [''Local warning'',''Terran notified'',''Parents
+      notified'',''Parents escalated''] %}{% set ns.active = true %}{% endif %}{%
+      endfor %}{{ ns.active }}'
+    channels: '{{ [{''leds'':[1,2], ''pending'':first_pending, ''running'':first_running,
+      ''running_states'':first_running_states, ''color'':127 if display_profile ==
+      ''Laundry'' else 213}, {''leds'':[6,7], ''pending'':second_pending, ''running'':second_running,
+      ''running_states'':second_running_states, ''color'':10 if display_profile ==
+      ''Laundry'' else 213}, {''leds'':[4], ''warning'':true, ''color'':1}, {''leds'':[3],
+      ''separator'':true, ''pending'':first_pending, ''running'':first_running, ''running_states'':first_running_states,
+      ''color'':1}, {''leds'':[5], ''separator'':true, ''pending'':second_pending,
+      ''running'':second_running, ''running_states'':second_running_states, ''color'':1}]
+      }}'
+- repeat:
+    for_each: '{{ expand(indicator_switches)|selectattr(''state'',''in'',[''on'',''off''])|map(attribute=''entity_id'')|list
+      }}'
+    sequence:
+    - variables:
+        current_switch: '{{ repeat.item }}'
+    - variables:
+        indicator_level: '{{ day_level if is_state(current_switch,''on'') else quiet_indicator_level
+          }}'
+    - repeat:
+        for_each: '{{ channels }}'
+        sequence:
+        - variables:
+            channel: '{{ repeat.item }}'
+            channel_effect: '{% if repeat.item.warning|default(false) %}{{ ''Slow
+              Blink'' if warning_active else ''Clear'' }}{% elif repeat.item.separator|default(false)
+              %}{% if warning_active %}Slow Blink{% elif expand(repeat.item.pending)|selectattr(''state'',''in'',[''on'',''Clean''])|list|count
+              > 0 or expand(repeat.item.running)|selectattr(''state'',''in'',repeat.item.running_states)|list|count
+              > 0 %}Off{% else %}Clear{% endif %}{% elif expand(repeat.item.pending)|selectattr(''state'',''in'',[''on'',''Clean''])|list|count
+              > 0 %}Solid{% elif expand(repeat.item.running)|selectattr(''state'',''in'',repeat.item.running_states)|list|count
+              > 0 %}Pulse{% else %}Clear{% endif %}'
+        - variables:
+            channel_level: '{{ [indicator_level | int, magenta_level | int] | min
+              if channel.color == 213 else ([indicator_level | int, cyan_level | int]
+              | min if channel.color == 127 else indicator_level) }}'
+        - repeat:
+            for_each: '{{ channel.leds }}'
+            sequence:
+            - action: !input led_script
+              continue_on_error: true
+              data:
+                target:
+                  entity_id:
+                  - '{{ current_switch }}'
+                led: '{{ repeat.item }}'
+                color: '{{ channel.color }}'
+                effect: '{{ channel_effect | trim }}'
+                level: '{{ channel_level }}'
+                duration: Indefinitely
