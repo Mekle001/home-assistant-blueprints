@@ -5,7 +5,8 @@ blueprint:
     warnings middle3–5. Pedestal display deferred. One owner per switch; lists must
     not overlap another instance. Add display switches and corresponding config-button
     event entities to extend group. Uses an Inovelli Blue Zigbee2MQTT LED script.
-    Cycle tracking and phone routing are separate. Source publication pending.
+    Cycle tracking and phone routing are separate. Published source; optional channels
+    use guarded state checks.
 
     Calibrated displays: day or switch on60%; quiet hours with switch off10%. Laundry
     orange10. Dark separators beside active appliance channels; fridge warnings retain
@@ -212,50 +213,35 @@ max: 30
 trace:
   stored_traces: 30
 variables:
-  indicator_switches: !input indicator_switches
-  acknowledgment_events: !input acknowledgment_events
-  led_script: !input led_script
-  display_profile: !input display_profile
-  first_pending: !input first_pending
-  first_running: !input first_running
-  first_running_states: !input first_running_states
-  second_pending: !input second_pending
-  second_running: !input second_running
-  second_running_states: !input second_running_states
-  warning_doors: !input warning_doors
-  warning_stages: !input warning_stages
-  quiet_start: !input quiet_start
-  quiet_end: !input quiet_end
-  day_level: !input day_level
-  night_level: !input night_level
-  cyan_level: !input cyan_level
-  magenta_level: !input magenta_level
+  indicator_switches: !input 'indicator_switches'
+  acknowledgment_events: !input 'acknowledgment_events'
+  led_script: !input 'led_script'
+  display_profile: !input 'display_profile'
+  first_pending: !input 'first_pending'
+  first_running: !input 'first_running'
+  first_running_states: !input 'first_running_states'
+  second_pending: !input 'second_pending'
+  second_running: !input 'second_running'
+  second_running_states: !input 'second_running_states'
+  warning_doors: !input 'warning_doors'
+  warning_stages: !input 'warning_stages'
+  quiet_start: !input 'quiet_start'
+  quiet_end: !input 'quiet_end'
+  day_level: !input 'day_level'
+  night_level: !input 'night_level'
+  cyan_level: !input 'cyan_level'
+  magenta_level: !input 'magenta_level'
 triggers:
 - trigger: state
   entity_id:
-  - !input quiet_start
-  - !input quiet_end
-  to:
+  - !input 'quiet_start'
+  - !input 'quiet_end'
+  to: null
 - trigger: state
-  entity_id: !input warning_stages
-  to:
+  entity_id: !input 'first_pending'
+  to: null
 - trigger: state
-  entity_id: !input warning_doors
-  to:
-- trigger: state
-  entity_id: !input second_running
-  to:
-- trigger: state
-  entity_id: !input second_pending
-  to:
-- trigger: state
-  entity_id: !input first_running
-  to:
-- trigger: state
-  entity_id: !input first_pending
-  to:
-- trigger: state
-  entity_id: !input indicator_switches
+  entity_id: !input 'indicator_switches'
   from:
   - unknown
   - unavailable
@@ -264,27 +250,63 @@ triggers:
   - 'off'
 - trigger: event.received
   target:
-    entity_id: !input acknowledgment_events
+    entity_id: !input 'acknowledgment_events'
   options:
     event_type:
     - double
   id: acknowledge
 - trigger: time
-  at: !input quiet_start
+  at: !input 'quiet_start'
 - trigger: time
-  at: !input quiet_end
+  at: !input 'quiet_end'
 - trigger: homeassistant
   event: start
 - trigger: event
   event_type: automation_reloaded
 - trigger: state
-  entity_id: !input indicator_switches
+  entity_id: !input 'indicator_switches'
   from: 'off'
   to: 'on'
 - trigger: state
-  entity_id: !input indicator_switches
+  entity_id: !input 'indicator_switches'
   from: 'on'
   to: 'off'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for entity in first_running
+    %}{% if states(entity) in first_running_states %}{% set ns.active = true %}{%
+    endif %}{% endfor %}{{ ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for entity in first_running
+    %}{% if states(entity) in first_running_states %}{% set ns.active = true %}{%
+    endif %}{% endfor %}{{ not ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for entity in second_running
+    %}{% if states(entity) in second_running_states %}{% set ns.active = true %}{%
+    endif %}{% endfor %}{{ ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for entity in second_running
+    %}{% if states(entity) in second_running_states %}{% set ns.active = true %}{%
+    endif %}{% endfor %}{{ not ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for entity in second_pending
+    %}{% if states(entity) in [''on'',''Clean''] %}{% set ns.active = true %}{% endif
+    %}{% endfor %}{{ ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for entity in second_pending
+    %}{% if states(entity) in [''on'',''Clean''] %}{% set ns.active = true %}{% endif
+    %}{% endfor %}{{ not ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for door in warning_doors
+    %}{% set idx = loop.index0 %}{% if idx < warning_stages|count and is_state(door,''on'')
+    and states(warning_stages[idx]) in [''Local warning'',''Terran notified'',''Parents
+    notified'',''Parents escalated''] %}{% set ns.active = true %}{% endif %}{% endfor
+    %}{{ ns.active }}'
+- trigger: template
+  value_template: '{% set ns = namespace(active=false) %}{% for door in warning_doors
+    %}{% set idx = loop.index0 %}{% if idx < warning_stages|count and is_state(door,''on'')
+    and states(warning_stages[idx]) in [''Local warning'',''Terran notified'',''Parents
+    notified'',''Parents escalated''] %}{% set ns.active = true %}{% endif %}{% endfor
+    %}{{ not ns.active }}'
 conditions: []
 actions:
 - if:
@@ -297,31 +319,29 @@ actions:
       == ''config'' }}'
   - if:
     - condition: state
-      entity_id: !input first_pending
+      entity_id: !input 'first_pending'
       state:
       - 'on'
       - Clean
       match: any
-    then: !input first_acknowledge
+    then: !input 'first_acknowledge'
   - if:
-    - condition: state
-      entity_id: !input second_pending
-      state:
-      - 'on'
-      - Clean
-      match: any
-    then: !input second_acknowledge
+    - condition: template
+      value_template: '{% set ns = namespace(active=false) %}{% for entity in second_pending
+        %}{% if states(entity) in [''on'',''Clean''] %}{% set ns.active = true %}{%
+        endif %}{% endfor %}{{ ns.active }}'
+    then: !input 'second_acknowledge'
   - delay:
       seconds: 1
 - variables:
-    quiet_indicator_level: !input day_level
+    quiet_indicator_level: !input 'day_level'
 - if:
   - condition: time
-    after: !input quiet_start
-    before: !input quiet_end
+    after: !input 'quiet_start'
+    before: !input 'quiet_end'
   then:
   - variables:
-      quiet_indicator_level: !input night_level
+      quiet_indicator_level: !input 'night_level'
 - variables:
     warning_active: '{% set ns = namespace(active=false) %}{% for door in warning_doors
       %}{% set idx = loop.index0 %}{% if idx < warning_stages|count and is_state(door,''on'')
@@ -365,7 +385,7 @@ actions:
         - repeat:
             for_each: '{{ channel.leds }}'
             sequence:
-            - action: !input led_script
+            - action: !input 'led_script'
               continue_on_error: true
               data:
                 target:
@@ -376,3 +396,11 @@ actions:
                 effect: '{{ channel_effect | trim }}'
                 level: '{{ channel_level }}'
                 duration: Indefinitely
+trigger_variables:
+  first_running_states: !input 'first_running_states'
+  second_pending: !input 'second_pending'
+  warning_doors: !input 'warning_doors'
+  warning_stages: !input 'warning_stages'
+  first_running: !input 'first_running'
+  second_running: !input 'second_running'
+  second_running_states: !input 'second_running_states'
