@@ -20,6 +20,12 @@ blueprint:
           description: The device, event, MQTT, or state trigger that should run this preset action.
           selector:
             trigger:
+        button_conditions:
+          name: Button conditions
+          description: Optional conditions to distinguish the button when an event reports its gesture and button separately, such as single with button config.
+          default: []
+          selector:
+            condition:
     target_section:
       name: Preset target
       icon: mdi:lightbulb-group
@@ -113,6 +119,7 @@ max: 10
 max_exceeded: silent
 
 trigger: !input button_trigger
+condition: !input button_conditions
 
 variables:
   preset_select_entity: !input preset_select
