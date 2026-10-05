@@ -9,15 +9,52 @@ blueprint:
   author: mgarlick / Codex
   source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/light_preset_cycle.yaml
   homeassistant:
-    min_version: 2024.6.0
+    min_version: 2026.7.0
   input:
-    trigger_section:
-      name: Trigger
+    inovelli_section:
+      name: Inovelli button
       icon: mdi:gesture-tap-button
+      input:
+        inovelli_switches:
+          name: Switches
+          description: Optional Inovelli action entities registered with the readable button event decoder. Leave empty when using an advanced trigger.
+          default: []
+          selector:
+            entity:
+              domain: event
+              integration: mqtt
+              multiple: true
+        inovelli_button:
+          name: Button
+          default: config
+          selector:
+            select:
+              options:
+                - {label: Config button, value: config}
+                - {label: Upper paddle, value: up}
+                - {label: Lower paddle, value: down}
+        inovelli_press:
+          name: Press type
+          default: single
+          selector:
+            select:
+              options:
+                - {label: Single press, value: single}
+                - {label: Double press, value: double}
+                - {label: Triple press, value: triple}
+                - {label: Four presses, value: quadruple}
+                - {label: Five presses, value: quintuple}
+                - {label: Hold, value: held}
+                - {label: Release, value: release}
+    trigger_section:
+      name: Advanced triggers and conditions
+      icon: mdi:cog
+      collapsed: true
       input:
         button_trigger:
           name: Button trigger
           description: The device, event, MQTT, or state trigger that should run this preset action.
+          default: []
           selector:
             trigger:
         button_conditions:
@@ -118,10 +155,29 @@ mode: queued
 max: 10
 max_exceeded: silent
 
-trigger: !input button_trigger
-condition: !input button_conditions
+trigger_variables:
+  decoded_button: !input inovelli_button
+  decoded_press: !input inovelli_press
+
+trigger:
+  - triggers: !input button_trigger
+  - alias: Selected Inovelli button pressed
+    trigger: event
+    event_type: inovelli_button
+    event_data:
+      action: "{{ decoded_button ~ '_' ~ decoded_press }}"
+    id: normalized_inovelli_button
+condition:
+  - alias: The pressed switch is selected, or this is an advanced trigger
+    condition: template
+    value_template: >-
+      {{ trigger.id != 'normalized_inovelli_button'
+         or trigger.event.data.get('entity_id') in selected_inovelli_switches }}
+  - condition: and
+    conditions: !input button_conditions
 
 variables:
+  selected_inovelli_switches: !input inovelli_switches
   preset_select_entity: !input preset_select
   preset_action_value: !input preset_action
   specific_preset_value: !input specific_preset

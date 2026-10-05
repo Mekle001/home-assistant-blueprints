@@ -1,0 +1,91 @@
+blueprint:
+  name: Inovelli — readable button events
+  description: >
+    Translate selected Inovelli MQTT event entities into consistent
+    inovelli_button events. Handles combined names (config_single) and split
+    attributes (event_type single, button config). Consumers receive entity_id,
+    button, press, action, and schema_version. Run exactly one decoder for each
+    source entity; overlapping decoders duplicate events. Does not operate
+    lights or send notifications.
+  domain: automation
+  author: mgarlick / Codex
+  source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/inovelli_button_decoder.yaml
+  homeassistant:
+    min_version: 2026.7.0
+  input:
+    switches:
+      name: Switches
+      description: Inovelli action event entities to decode. Add switches here as consumers migrate.
+      selector:
+        entity:
+          domain: event
+          integration: mqtt
+          multiple: true
+
+mode: parallel
+max: 50
+max_exceeded: warning
+triggers:
+  - trigger: event.received
+    target:
+      entity_id: !input switches
+    options:
+      event_type:
+        - single
+        - double
+        - triple
+        - quadruple
+        - quintuple
+        - held
+        - release
+        - up_single
+        - up_double
+        - up_triple
+        - up_quadruple
+        - up_quintuple
+        - up_held
+        - up_release
+        - down_single
+        - down_double
+        - down_triple
+        - down_quadruple
+        - down_quintuple
+        - down_held
+        - down_release
+        - config_single
+        - config_double
+        - config_triple
+        - config_quadruple
+        - config_quintuple
+        - config_held
+        - config_release
+actions:
+  - alias: Decode the event snapshot, never a later switch state
+    variables:
+      decoded_action: >-
+        {% set attrs = trigger.to_state.attributes if trigger.to_state is defined and trigger.to_state is not none else {} %}
+        {% set raw = attrs.get('event_type', '') %}
+        {% set button = attrs.get('button', '') %}
+        {% set buttons = ['up', 'down', 'config'] %}
+        {% set presses = ['single', 'double', 'triple', 'quadruple', 'quintuple', 'held', 'release'] %}
+        {% set parts = raw.split('_', 1) if raw is string else [] %}
+        {% if attrs.get('restored', false) %}
+          {{ '' }}
+        {% elif parts | count == 2 and parts[0] in buttons and parts[1] in presses %}
+          {{ raw }}
+        {% elif button in buttons and raw in presses %}
+          {{ button ~ '_' ~ raw }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
+  - alias: Ignore unsupported or restored events
+    condition: template
+    value_template: "{{ decoded_action != '' }}"
+  - alias: Publish one readable button event
+    event: inovelli_button
+    event_data:
+      entity_id: "{{ trigger.entity_id }}"
+      button: "{{ decoded_action.split('_', 1)[0] }}"
+      press: "{{ decoded_action.split('_', 1)[1] }}"
+      action: "{{ decoded_action }}"
+      schema_version: 1

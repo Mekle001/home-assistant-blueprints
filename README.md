@@ -76,6 +76,12 @@ Blueprint source:
 
 `automation/light_preset_cycle.yaml`
 
+For Inovelli switches, use the **Switches**, **Button**, and **Press type**
+selectors. Those switches must also be selected in one running instance of
+the **Inovelli — readable button events** decoder below. Legacy/custom triggers
+remain available in the collapsed **Advanced triggers and conditions** section.
+Avoid configuring both trigger paths for the same press, which would run twice.
+
 This automation blueprint cycles, resets, or reapplies light presets stored in a
 hidden `input_select`. It is intended for smart bulbs or light groups where the
 normal wall-switch behavior remains local/bound, while a scene/favorites button
@@ -191,3 +197,22 @@ latches an input_boolean until acknowledgement or a new cycle. Off, unavailable,
 idle, and an initial end state do not imply completion. Use one instance per
 appliance; LED displays and phone routing are separate. Minimum Home Assistant
 version: 2024.10.
+
+## Inovelli Readable Button Events
+
+Source: `automation/inovelli_button_decoder.yaml`
+
+One shared decoder instance accepts an array of MQTT action event entities and
+emits `inovelli_button` events. Select each source in exactly one decoder.
+Consumers can filter on `action: config_single`, `up_double`, or other supported
+gestures and on `entity_id` to identify the source. Event data also includes
+`button`, `press`, and `schema_version: 1`. The decoder reads the triggering
+snapshot, accepts old combined and new split formats, and ignores unsupported
+or restored events. It does not replay historical presses. Keep it enabled:
+consumers using readable events depend on it. Minimum Home Assistant: 2026.7.
+
+For a preset consumer, choose the switches, button, and press type directly in
+Light Preset Cycle From Select. Existing custom-trigger instances continue to
+work. Migration removes their old triggers and button conditions to prevent
+double execution. Roll back a consumer by restoring its previous inputs; stop
+the decoder only after all of its consumers have been rolled back.
