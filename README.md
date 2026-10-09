@@ -198,6 +198,17 @@ idle, and an initial end state do not imply completion. Use one instance per
 appliance; LED displays and phone routing are separate. Minimum Home Assistant
 version: 2024.10.
 
+## Pending Laundry Reminder Expiry
+
+Source: `automation/pending_load_expiry.yaml`
+
+Clears a forgotten completed-load reminder after 24 hours by default. Use a
+dedicated date-and-time helper for each pending-load boolean; deadlines survive
+restarts, including an expiry while Home Assistant was offline. Acknowledgment
+and new cycles keep their existing behavior. Expiry means the reminder aged out,
+not that the load was unloaded. Existing pending reminders without a deadline
+receive a fresh timeout. Minimum Home Assistant version: 2024.10.
+
 ## Inovelli Readable Button Events
 
 Source: `automation/inovelli_button_decoder.yaml`

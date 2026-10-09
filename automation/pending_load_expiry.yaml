@@ -1,0 +1,112 @@
+blueprint:
+  name: Pending laundry — expire forgotten acknowledgment
+  description: >-
+    Clear a completed-load reminder after a long timeout, without inferring that
+    the appliance was unloaded. Use one instance and one dedicated date-and-time
+    helper per pending-load boolean. The stored deadline survives restarts;
+    overdue reminders are reconciled at startup, reload, and once per minute.
+    Acknowledgment or a new cycle still clears the boolean through its existing
+    owner. Existing pending reminders without a deadline receive a fresh timeout.
+    This blueprint does not send notifications or control the appliance.
+  domain: automation
+  author: Mekle001
+  source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/pending_load_expiry.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    pending_helper:
+      name: Awaiting-attention helper
+      selector:
+        entity:
+          domain: input_boolean
+    expiry_helper:
+      name: Expiry deadline
+      description: Dedicated input_datetime helper with both date and time enabled.
+      selector:
+        entity:
+          domain: input_datetime
+    timeout_hours:
+      name: Reminder lifetime
+      default: 24
+      selector:
+        number:
+          min: 1
+          max: 168
+          step: 1
+          unit_of_measurement: hours
+          mode: box
+mode: queued
+max: 10
+trace:
+  stored_traces: 10
+variables:
+  expiry_helper: !input expiry_helper
+  timeout_hours: !input timeout_hours
+triggers:
+- trigger: state
+  entity_id: !input pending_helper
+  from: 'off'
+  to: 'on'
+  id: pending
+- trigger: state
+  entity_id: !input pending_helper
+  to: 'off'
+  id: cleared
+- trigger: time
+  at: !input expiry_helper
+  id: reconcile
+- trigger: time_pattern
+  minutes: '*'
+  id: reconcile
+- trigger: homeassistant
+  event: start
+  id: reconcile
+- trigger: event
+  event_type: automation_reloaded
+  id: reconcile
+conditions: []
+actions:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: cleared
+    - condition: state
+      entity_id: !input pending_helper
+      state: 'off'
+    sequence:
+    - alias: Clear the previous deadline
+      action: input_datetime.set_datetime
+      target:
+        entity_id: !input expiry_helper
+      data:
+        timestamp: 0
+  - conditions:
+    - condition: state
+      entity_id: !input pending_helper
+      state: 'on'
+    sequence:
+    - variables:
+        deadline: "{{ state_attr(expiry_helper, 'timestamp') | float(0) }}"
+    - choose:
+      - conditions:
+        - condition: or
+          conditions:
+          - condition: trigger
+            id: pending
+          - condition: template
+            value_template: "{{ has_value(expiry_helper) and deadline <= 86400 }}"
+        sequence:
+        - alias: Save the deadline for this completed load
+          action: input_datetime.set_datetime
+          target:
+            entity_id: !input expiry_helper
+          data:
+            timestamp: "{{ now().timestamp() + (timeout_hours | float * 3600) }}"
+      - conditions:
+        - condition: template
+          value_template: "{{ has_value(expiry_helper) and deadline > 86400 and deadline <= now().timestamp() }}"
+        sequence:
+        - alias: Expire the reminder without asserting the load was unloaded
+          action: input_boolean.turn_off
+          target:
+            entity_id: !input pending_helper
