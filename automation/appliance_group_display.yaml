@@ -2,7 +2,7 @@ blueprint:
   name: Appliance group — consistent Inovelli displays
   description: 'Local v1. Laundry cyan bottom1–2 and orange top6–7. Dishes magenta
     bottom/right and top/left. Pulse running; solid completion; clear idle. Red fridge
-    warnings middle3–5. Pedestal display deferred. One owner per switch; lists must
+    warnings middle3–5. A pedestal washer can share the washer channel. One owner per switch; lists must
     not overlap another instance. Add display switches and corresponding config-button
     event entities to extend group. Uses an Inovelli Blue Zigbee2MQTT LED script.
     Cycle tracking and phone routing are separate. Published source; optional channels
