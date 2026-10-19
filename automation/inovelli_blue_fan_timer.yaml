@@ -226,6 +226,16 @@ action:
               payload: >-
                 {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
                 'level': 0, 'duration': 1}} | to_json }}
+          - repeat:
+              count: 7
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    topic: "{{ mqtt_base_topic }}/set"
+                    payload: >-
+                      {{ {'individual_led_effect': {'led': repeat.index,
+                      'effect': 'clear_effect', 'color': 0,
+                      'level': 0, 'duration': 1}} | to_json }}
           - delay:
               milliseconds: 500
           - service: light.turn_off
@@ -241,6 +251,16 @@ action:
               payload: >-
                 {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
                 'level': 0, 'duration': 1}} | to_json }}
+          - repeat:
+              count: 7
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    topic: "{{ mqtt_base_topic }}/set"
+                    payload: >-
+                      {{ {'individual_led_effect': {'led': repeat.index,
+                      'effect': 'clear_effect', 'color': 0,
+                      'level': 0, 'duration': 1}} | to_json }}
           - delay:
               milliseconds: 500
           - service: light.turn_off
@@ -330,6 +350,16 @@ action:
       payload: >-
         {{ {'led_effect': {'effect': 'clear_effect', 'color': 0,
         'level': 0, 'duration': 1}} | to_json }}
+  - repeat:
+      count: 7
+      sequence:
+        - service: mqtt.publish
+          data:
+            topic: "{{ mqtt_base_topic }}/set"
+            payload: >-
+              {{ {'individual_led_effect': {'led': repeat.index,
+              'effect': 'clear_effect', 'color': 0,
+              'level': 0, 'duration': 1}} | to_json }}
 
   - delay:
       milliseconds: 500
