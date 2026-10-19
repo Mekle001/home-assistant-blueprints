@@ -28,6 +28,13 @@ blueprint:
           selector:
             entity:
               domain: timer
+        automatic_hold_entity:
+          name: Automatic ventilation hold
+          description: Optional helper that keeps the fan running after a preset expires. Paddle down still turns it off immediately.
+          default: []
+          selector:
+            entity:
+              domain: input_boolean
     duration_section:
       name: Timer presets
       icon: mdi:timer-outline
@@ -187,6 +194,7 @@ variables:
     {{ device_entities(switch_device_id)
     | select('match', '^light\\.') | first | default('', true) }}
   timer: !input timer_entity
+  automatic_hold: !input automatic_hold_entity
   zwave_device: "{{ switch_device_id }}"
   led_parameters: [64, 69, 74, 79, 84, 89, 94]
   preset_minutes:
@@ -242,9 +250,11 @@ action:
                     value: 255
           - delay:
               milliseconds: 500
-          - service: homeassistant.turn_off
-            target:
-              entity_id: "{{ fan_load }}"
+          - if: "{{ not automatic_hold or not is_state(automatic_hold, 'on') }}"
+            then:
+              - service: homeassistant.turn_off
+                target:
+                  entity_id: "{{ fan_load }}"
           - stop: Fan timer completed.
 
   - variables:
@@ -346,6 +356,8 @@ action:
   - delay:
       milliseconds: 500
 
-  - service: homeassistant.turn_off
-    target:
-      entity_id: "{{ fan_load }}"
+  - if: "{{ not automatic_hold or not is_state(automatic_hold, 'on') }}"
+    then:
+      - service: homeassistant.turn_off
+        target:
+          entity_id: "{{ fan_load }}"
