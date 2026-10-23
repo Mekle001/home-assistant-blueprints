@@ -37,6 +37,16 @@ blueprint:
           default: ""
           selector:
             text:
+        automatic_hold_entity:
+          name: Automatic ventilation hold
+          description: >
+            Optional helper that keeps the fan running after a preset expires.
+            Paddle down always turns it off. An unavailable hold is conservative
+            and must recover to off before preset expiry can turn the fan off.
+          default: []
+          selector:
+            entity:
+              domain: input_boolean
 
     duration_section:
       name: Timer presets
@@ -191,6 +201,7 @@ variables:
     {{ device_entities(switch_device_id)
     | select('match', '^light\\.') | first | default('', true) }}
   timer: !input timer_entity
+  automatic_hold: !input automatic_hold_entity
   configured_mqtt_topic: !input zigbee2mqtt_topic
   mqtt_base_topic: >-
     {% if configured_mqtt_topic | trim %}
@@ -263,9 +274,11 @@ action:
                       'level': 0, 'duration': 1}} | to_json }}
           - delay:
               milliseconds: 500
-          - service: light.turn_off
-            target:
-              entity_id: "{{ fan_load }}"
+          - if: "{{ not automatic_hold or is_state(automatic_hold, 'off') }}"
+            then:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ fan_load }}"
           - stop: Fan timer completed.
 
   - variables:
@@ -364,6 +377,8 @@ action:
   - delay:
       milliseconds: 500
 
-  - service: light.turn_off
-    target:
-      entity_id: "{{ fan_load }}"
+  - if: "{{ not automatic_hold or is_state(automatic_hold, 'off') }}"
+    then:
+      - service: light.turn_off
+        target:
+          entity_id: "{{ fan_load }}"
