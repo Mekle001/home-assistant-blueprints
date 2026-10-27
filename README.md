@@ -24,6 +24,20 @@ The countdown uses the VZW30's individual LED effect parameters 64, 69, 74,
 blueprint clears those same seven individual effects when the timer is
 cancelled or expires, restoring the normal LED state.
 
+Both fan-timer blueprints support an optional humidity ventilation indicator.
+Supply the humidity controller's `automatic_hold_entity`, enable
+`humidity_led_enabled`, and supply a dedicated restoring `input_boolean` as
+`humidity_led_owned_entity`. The full bar shows a cyan slow-rising animation at
+30% while humidity ventilation owns the running fan and the preset timer is idle.
+Color and brightness are configurable. Preset countdowns take priority: the
+humidity effect clears before a preset starts and returns after expiry if the
+humidity hold is still active. Manual off clears it. Background status updates
+cannot restart an active countdown, and the status path never operates the fan
+or preset timer. Leave the option disabled for fans without humidity control.
+
+Focused handoff tests: `python3 -m unittest discover -s tests`
+(requires PyYAML and Jinja2).
+
 Expired countdown segments remain under a solid notification at zero intensity
 until final cleanup. Clearing or disabling an individual effect during the
 countdown would reveal the switch's normal load-on color instead of leaving the
