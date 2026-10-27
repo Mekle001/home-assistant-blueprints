@@ -1,10 +1,15 @@
 blueprint:
   name: Inovelli Red VZW30 Fan Preset Timer
-  description: >
-    Replace the VZW30-SN firmware fan timer with a Home Assistant timer.
-    Each paddle-up press advances through five run-time presets and refills a
-    seven-segment LED countdown. Paddle down cancels the timer and turns the
-    fan off. Requires Z-Wave JS and an input timer helper.
+  description: 'Replace the VZW30-SN firmware fan timer with a Home Assistant timer. Each paddle-up press advances
+    through five run-time presets and refills a seven-segment LED countdown. Paddle down cancels the timer and turns
+    the fan off. Requires Z-Wave JS and an input timer helper.
+
+
+    Optional humidity status: cyan slow-rising full-bar animation at 30% when the automatic ventilation hold is
+    on and no preset is active. Preset countdowns take priority. Provide a dedicated restoring input_boolean to
+    track LED ownership; this status controller never operates the fan.
+
+    '
   domain: automation
   author: mgarlick / Codex
   source_url: https://raw.githubusercontent.com/Mekle001/home-assistant-blueprints/main/automation/inovelli_red_fan_timer.yaml
@@ -30,7 +35,8 @@ blueprint:
               domain: timer
         automatic_hold_entity:
           name: Automatic ventilation hold
-          description: Optional helper that keeps the fan running after a preset expires. Paddle down still turns it off immediately.
+          description: Optional helper that keeps the fan running after a preset expires. Paddle down still turns
+            it off immediately.
           default: []
           selector:
             entity:
@@ -90,7 +96,6 @@ blueprint:
               step: 1
               unit_of_measurement: min
               mode: box
-
     led_section:
       name: LED countdown
       icon: mdi:led-strip-variant
@@ -157,207 +162,419 @@ blueprint:
               min: 1
               max: 100
               step: 1
-              unit_of_measurement: "%"
+              unit_of_measurement: '%'
               mode: slider
-
+    humidity_section:
+      name: Humidity ventilation indicator
+      icon: mdi:water-percent
+      collapsed: true
+      input:
+        humidity_led_enabled:
+          name: Show humidity ventilation status
+          default: false
+          selector:
+            boolean: {}
+        humidity_led_owned_entity:
+          name: LED ownership helper
+          default: []
+          description: Dedicated restoring input_boolean; internal LED ownership, not a user control.
+          selector:
+            entity:
+              domain:
+              - input_boolean
+              multiple: false
+        humidity_led_color:
+          name: Humidity color
+          default: 127
+          selector:
+            number:
+              min: 0
+              max: 255
+              step: 1
+              mode: slider
+        humidity_led_intensity:
+          name: Humidity brightness
+          default: 30
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              mode: slider
+              unit_of_measurement: '%'
 mode: restart
 max_exceeded: silent
-
 trigger:
-  - platform: event
-    event_type: zwave_js_value_notification
-    event_data:
-      device_id: !input switch_device
-      command_class: 91
-      property: scene
-      property_key: "002"
-      value: KeyPressed
-    id: paddle_up
-  - platform: event
-    event_type: zwave_js_value_notification
-    event_data:
-      device_id: !input switch_device
-      command_class: 91
-      property: scene
-      property_key: "001"
-      value: KeyPressed
-    id: paddle_down
-  - platform: event
-    event_type: timer.finished
-    event_data:
-      entity_id: !input timer_entity
-    id: timer_finished
-
+- platform: event
+  event_type: zwave_js_value_notification
+  event_data:
+    device_id: !input 'switch_device'
+    command_class: 91
+    property: scene
+    property_key: '002'
+    value: KeyPressed
+  id: paddle_up
+- platform: event
+  event_type: zwave_js_value_notification
+  event_data:
+    device_id: !input 'switch_device'
+    command_class: 91
+    property: scene
+    property_key: '001'
+    value: KeyPressed
+  id: paddle_down
+- platform: event
+  event_type: timer.finished
+  event_data:
+    entity_id: !input 'timer_entity'
+  id: timer_finished
+- platform: template
+  value_template: '{{ hold_trigger and is_state(hold_trigger, ''on'') and is_state((device_entities(device_trigger)
+    | select(''match'', ''^light[.]'') | first | default('''')), ''on'') }}'
+  id: humidity_on
+  enabled: !input 'humidity_led_enabled'
+- platform: template
+  value_template: '{{ hold_trigger and (is_state(hold_trigger, ''off'') or is_state((device_entities(device_trigger)
+    | select(''match'', ''^light[.]'') | first | default('''')), ''off'')) }}'
+  id: humidity_off
+  enabled: !input 'humidity_led_enabled'
+- platform: time_pattern
+  minutes: /1
+  id: humidity_reconcile
+  enabled: !input 'humidity_led_enabled'
+- platform: homeassistant
+  event: start
+  id: humidity_restore
+  enabled: !input 'humidity_led_enabled'
+- platform: event
+  event_type: automation_reloaded
+  id: humidity_restore
+  enabled: !input 'humidity_led_enabled'
 variables:
-  switch_device_id: !input switch_device
-  fan_load: >-
-    {{ device_entities(switch_device_id)
-    | select('match', '^light\\.') | first | default('', true) }}
-  timer: !input timer_entity
-  automatic_hold: !input automatic_hold_entity
-  zwave_device: "{{ switch_device_id }}"
-  led_parameters: [64, 69, 74, 79, 84, 89, 94]
+  switch_device_id: !input 'switch_device'
+  fan_load: '{{ device_entities(switch_device_id) | select(''match'', ''^light\\.'') | first | default('''', true)
+    }}'
+  timer: !input 'timer_entity'
+  automatic_hold: !input 'automatic_hold_entity'
+  zwave_device: '{{ switch_device_id }}'
+  led_parameters:
+  - 64
+  - 69
+  - 74
+  - 79
+  - 84
+  - 89
+  - 94
   preset_minutes:
-    - !input preset_1_minutes
-    - !input preset_2_minutes
-    - !input preset_3_minutes
-    - !input preset_4_minutes
-    - !input preset_5_minutes
+  - !input 'preset_1_minutes'
+  - !input 'preset_2_minutes'
+  - !input 'preset_3_minutes'
+  - !input 'preset_4_minutes'
+  - !input 'preset_5_minutes'
   preset_colors:
-    - !input preset_1_color
-    - !input preset_2_color
-    - !input preset_3_color
-    - !input preset_4_color
-    - !input preset_5_color
-  final_warning_color: !input warning_color
-  countdown_intensity: !input led_intensity
-
+  - !input 'preset_1_color'
+  - !input 'preset_2_color'
+  - !input 'preset_3_color'
+  - !input 'preset_4_color'
+  - !input 'preset_5_color'
+  final_warning_color: !input 'warning_color'
+  countdown_intensity: !input 'led_intensity'
+  humidity_enabled: !input 'humidity_led_enabled'
+  humidity_led_owned: !input 'humidity_led_owned_entity'
+  humidity_color: !input 'humidity_led_color'
+  humidity_intensity: !input 'humidity_led_intensity'
 action:
-  - choose:
-      - conditions: "{{ trigger.id == 'paddle_down' }}"
+- choose:
+  - conditions:
+    - condition: trigger
+      id:
+      - humidity_on
+      - humidity_off
+      - humidity_reconcile
+      - humidity_restore
+    sequence:
+    - choose:
+      - conditions:
+        - '{{ humidity_enabled and automatic_hold and humidity_led_owned and is_state(automatic_hold, ''on'') and
+          is_state(fan_load, ''on'') and is_state(timer, ''idle'') }}'
+        - '{{ is_state(humidity_led_owned, ''off'') or trigger.id in [''humidity_on'', ''humidity_restore''] }}'
         sequence:
-          - service: timer.cancel
-            target:
-              entity_id: "{{ timer }}"
-          - repeat:
-              count: 7
-              sequence:
-                - service: zwave_js.set_config_parameter
-                  target:
-                    device_id: "{{ zwave_device }}"
-                  data:
-                    parameter: "{{ led_parameters[repeat.index - 1] }}"
-                    bitmask: 4278190080
-                    value: 255
-          - delay:
-              milliseconds: 500
-          - service: homeassistant.turn_off
-            target:
-              entity_id: "{{ fan_load }}"
-          - stop: Fan timer cancelled from the paddle.
-
-      - conditions: "{{ trigger.id == 'timer_finished' }}"
-        sequence:
-          - repeat:
-              count: 7
-              sequence:
-                - service: zwave_js.set_config_parameter
-                  target:
-                    device_id: "{{ zwave_device }}"
-                  data:
-                    parameter: "{{ led_parameters[repeat.index - 1] }}"
-                    bitmask: 4278190080
-                    value: 255
-          - delay:
-              milliseconds: 500
-          - if: "{{ not automatic_hold or not is_state(automatic_hold, 'on') }}"
-            then:
-              - service: homeassistant.turn_off
-                target:
-                  entity_id: "{{ fan_load }}"
-          - stop: Fan timer completed.
-
-  - variables:
-      current_duration_seconds: >-
-        {% if is_state(timer, 'active') or is_state(timer, 'paused') %}
-          {{ as_timedelta(state_attr(timer, 'duration')).total_seconds() | int }}
-        {% else %}
-          0
-        {% endif %}
-      next_preset_index: >-
-        {% if current_duration_seconds | int == 0 %}
-          0
-        {% else %}
-          {% set ns = namespace(index=0, found=false) %}
-          {% for minutes in preset_minutes %}
-            {% if not ns.found and (minutes | int * 60) == (current_duration_seconds | int) %}
-              {% set ns.index = [loop.index, 4] | min %}
-              {% set ns.found = true %}
-            {% endif %}
-          {% endfor %}
-          {{ ns.index if ns.found else 0 }}
-        {% endif %}
-
-  - variables:
-      selected_minutes: "{{ preset_minutes[next_preset_index | int] | int }}"
-      selected_color: "{{ preset_colors[next_preset_index | int] | int }}"
-      selected_seconds: "{{ selected_minutes | int * 60 }}"
-      timer_duration: >-
-        {% set seconds = selected_minutes | int * 60 %}
-        {{ '%02d:%02d:%02d' | format(seconds // 3600,
-        (seconds % 3600) // 60, seconds % 60) }}
-      segment_seconds: "{{ (selected_minutes | float * 60 / 7) }}"
-
-  - service: homeassistant.turn_on
-    target:
-      entity_id: "{{ fan_load }}"
-
-  - repeat:
-      count: 7
-      sequence:
-        - service: zwave_js.bulk_set_partial_config_parameters
-          target:
-            device_id: "{{ zwave_device }}"
-          data:
-            parameter: "{{ led_parameters[repeat.index - 1] }}"
-            value:
-              "255": 255
-              "65280": "{{ countdown_intensity | int }}"
-              "16711680": "{{ selected_color | int }}"
-              "4278190080": 1
-
-  - service: timer.start
-    target:
-      entity_id: "{{ timer }}"
-    data:
-      duration: "{{ timer_duration }}"
-
-  - repeat:
-      count: 6
-      sequence:
-        - delay:
-            seconds: "{{ segment_seconds | float }}"
-        - service: zwave_js.bulk_set_partial_config_parameters
-          target:
-            device_id: "{{ zwave_device }}"
-          data:
-            parameter: "{{ led_parameters[7 - repeat.index] }}"
-            value:
-              "255": 255
-              "65280": 0
-              "16711680": 0
-              "4278190080": 1
-
-  - service: zwave_js.bulk_set_partial_config_parameters
-    target:
-      device_id: "{{ zwave_device }}"
-    data:
-      parameter: 64
-      value:
-        "255": 255
-        "65280": "{{ countdown_intensity | int }}"
-        "16711680": "{{ final_warning_color | int }}"
-        "4278190080": 4
-
-  - delay:
-      seconds: "{{ segment_seconds | float }}"
-
-  - repeat:
-      count: 7
-      sequence:
         - service: zwave_js.set_config_parameter
           target:
-            device_id: "{{ zwave_device }}"
+            device_id: '{{ zwave_device }}'
           data:
-            parameter: "{{ led_parameters[repeat.index - 1] }}"
+            parameter: 99
             bitmask: 4278190080
             value: 255
-
-  - delay:
-      milliseconds: 500
-
-  - if: "{{ not automatic_hold or not is_state(automatic_hold, 'on') }}"
-    then:
+        - repeat:
+            count: 7
+            sequence:
+            - service: zwave_js.set_config_parameter
+              target:
+                device_id: '{{ zwave_device }}'
+              data:
+                parameter: '{{ led_parameters[repeat.index - 1] }}'
+                bitmask: 4278190080
+                value: 255
+        - service: zwave_js.bulk_set_partial_config_parameters
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: 99
+            value:
+              '255': 255
+              '65280': '{{ humidity_intensity | int }}'
+              '16711680': '{{ humidity_color | int }}'
+              '4278190080': 12
+        - service: input_boolean.turn_on
+          target:
+            entity_id: '{{ humidity_led_owned }}'
+      - conditions:
+        - '{{ humidity_led_owned and is_state(humidity_led_owned, ''on'') and is_state(timer, ''idle'') and (not
+          is_state(automatic_hold, ''on'') or not is_state(fan_load, ''on'')) }}'
+        sequence:
+        - service: zwave_js.set_config_parameter
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: 99
+            bitmask: 4278190080
+            value: 255
+        - service: input_boolean.turn_off
+          target:
+            entity_id: '{{ humidity_led_owned }}'
+    - stop: Humidity status only; fan and preset timer are unchanged.
+  - conditions: '{{ trigger.id == ''paddle_down'' }}'
+    sequence:
+    - alias: Yield the full bar before the preset countdown writes segments
+      if: '{{ humidity_enabled and humidity_led_owned }}'
+      then:
+      - service: zwave_js.set_config_parameter
+        target:
+          device_id: '{{ zwave_device }}'
+        data:
+          parameter: 99
+          bitmask: 4278190080
+          value: 255
+      - service: input_boolean.turn_off
+        target:
+          entity_id: '{{ humidity_led_owned }}'
+    - service: timer.cancel
+      target:
+        entity_id: '{{ timer }}'
+    - repeat:
+        count: 7
+        sequence:
+        - service: zwave_js.set_config_parameter
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: '{{ led_parameters[repeat.index - 1] }}'
+            bitmask: 4278190080
+            value: 255
+    - delay:
+        milliseconds: 500
+    - service: homeassistant.turn_off
+      target:
+        entity_id: '{{ fan_load }}'
+    - stop: Fan timer cancelled from the paddle.
+  - conditions: '{{ trigger.id == ''timer_finished'' }}'
+    sequence:
+    - alias: Yield the full bar before the preset countdown writes segments
+      if: '{{ humidity_enabled and humidity_led_owned }}'
+      then:
+      - service: zwave_js.set_config_parameter
+        target:
+          device_id: '{{ zwave_device }}'
+        data:
+          parameter: 99
+          bitmask: 4278190080
+          value: 255
+      - service: input_boolean.turn_off
+        target:
+          entity_id: '{{ humidity_led_owned }}'
+    - repeat:
+        count: 7
+        sequence:
+        - service: zwave_js.set_config_parameter
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: '{{ led_parameters[repeat.index - 1] }}'
+            bitmask: 4278190080
+            value: 255
+    - delay:
+        milliseconds: 500
+    - if: '{{ not automatic_hold or not is_state(automatic_hold, ''on'') }}'
+      then:
       - service: homeassistant.turn_off
         target:
-          entity_id: "{{ fan_load }}"
+          entity_id: '{{ fan_load }}'
+      else:
+      - if: '{{ humidity_enabled and automatic_hold and humidity_led_owned and is_state(automatic_hold, ''on'')
+          and is_state(fan_load, ''on'') and is_state(timer, ''idle'') }}'
+        then:
+        - service: zwave_js.set_config_parameter
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: 99
+            bitmask: 4278190080
+            value: 255
+        - repeat:
+            count: 7
+            sequence:
+            - service: zwave_js.set_config_parameter
+              target:
+                device_id: '{{ zwave_device }}'
+              data:
+                parameter: '{{ led_parameters[repeat.index - 1] }}'
+                bitmask: 4278190080
+                value: 255
+        - service: zwave_js.bulk_set_partial_config_parameters
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: 99
+            value:
+              '255': 255
+              '65280': '{{ humidity_intensity | int }}'
+              '16711680': '{{ humidity_color | int }}'
+              '4278190080': 12
+        - service: input_boolean.turn_on
+          target:
+            entity_id: '{{ humidity_led_owned }}'
+    - stop: Fan timer completed.
+- alias: Yield the full bar before the preset countdown writes segments
+  if: '{{ humidity_enabled and humidity_led_owned }}'
+  then:
+  - service: zwave_js.set_config_parameter
+    target:
+      device_id: '{{ zwave_device }}'
+    data:
+      parameter: 99
+      bitmask: 4278190080
+      value: 255
+  - service: input_boolean.turn_off
+    target:
+      entity_id: '{{ humidity_led_owned }}'
+- variables:
+    current_duration_seconds: "{% if is_state(timer, 'active') or is_state(timer, 'paused') %}\n  {{ as_timedelta(state_attr(timer,\
+      \ 'duration')).total_seconds() | int }}\n{% else %}\n  0\n{% endif %}"
+    next_preset_index: "{% if current_duration_seconds | int == 0 %}\n  0\n{% else %}\n  {% set ns = namespace(index=0,\
+      \ found=false) %}\n  {% for minutes in preset_minutes %}\n    {% if not ns.found and (minutes | int * 60)\
+      \ == (current_duration_seconds | int) %}\n      {% set ns.index = [loop.index, 4] | min %}\n      {% set ns.found\
+      \ = true %}\n    {% endif %}\n  {% endfor %}\n  {{ ns.index if ns.found else 0 }}\n{% endif %}"
+- variables:
+    selected_minutes: '{{ preset_minutes[next_preset_index | int] | int }}'
+    selected_color: '{{ preset_colors[next_preset_index | int] | int }}'
+    selected_seconds: '{{ selected_minutes | int * 60 }}'
+    timer_duration: '{% set seconds = selected_minutes | int * 60 %} {{ ''%02d:%02d:%02d'' | format(seconds // 3600,
+      (seconds % 3600) // 60, seconds % 60) }}'
+    segment_seconds: '{{ (selected_minutes | float * 60 / 7) }}'
+- service: homeassistant.turn_on
+  target:
+    entity_id: '{{ fan_load }}'
+- repeat:
+    count: 7
+    sequence:
+    - service: zwave_js.bulk_set_partial_config_parameters
+      target:
+        device_id: '{{ zwave_device }}'
+      data:
+        parameter: '{{ led_parameters[repeat.index - 1] }}'
+        value:
+          '255': 255
+          '65280': '{{ countdown_intensity | int }}'
+          '16711680': '{{ selected_color | int }}'
+          '4278190080': 1
+- service: timer.start
+  target:
+    entity_id: '{{ timer }}'
+  data:
+    duration: '{{ timer_duration }}'
+- repeat:
+    count: 6
+    sequence:
+    - delay:
+        seconds: '{{ segment_seconds | float }}'
+    - service: zwave_js.bulk_set_partial_config_parameters
+      target:
+        device_id: '{{ zwave_device }}'
+      data:
+        parameter: '{{ led_parameters[7 - repeat.index] }}'
+        value:
+          '255': 255
+          '65280': 0
+          '16711680': 0
+          '4278190080': 1
+- service: zwave_js.bulk_set_partial_config_parameters
+  target:
+    device_id: '{{ zwave_device }}'
+  data:
+    parameter: 64
+    value:
+      '255': 255
+      '65280': '{{ countdown_intensity | int }}'
+      '16711680': '{{ final_warning_color | int }}'
+      '4278190080': 4
+- delay:
+    seconds: '{{ segment_seconds | float }}'
+- repeat:
+    count: 7
+    sequence:
+    - service: zwave_js.set_config_parameter
+      target:
+        device_id: '{{ zwave_device }}'
+      data:
+        parameter: '{{ led_parameters[repeat.index - 1] }}'
+        bitmask: 4278190080
+        value: 255
+- delay:
+    milliseconds: 500
+- if: '{{ not automatic_hold or not is_state(automatic_hold, ''on'') }}'
+  then:
+  - service: homeassistant.turn_off
+    target:
+      entity_id: '{{ fan_load }}'
+  else:
+  - if: '{{ humidity_enabled and automatic_hold and humidity_led_owned and is_state(automatic_hold, ''on'') and
+      is_state(fan_load, ''on'') and is_state(timer, ''idle'') }}'
+    then:
+    - service: zwave_js.set_config_parameter
+      target:
+        device_id: '{{ zwave_device }}'
+      data:
+        parameter: 99
+        bitmask: 4278190080
+        value: 255
+    - repeat:
+        count: 7
+        sequence:
+        - service: zwave_js.set_config_parameter
+          target:
+            device_id: '{{ zwave_device }}'
+          data:
+            parameter: '{{ led_parameters[repeat.index - 1] }}'
+            bitmask: 4278190080
+            value: 255
+    - service: zwave_js.bulk_set_partial_config_parameters
+      target:
+        device_id: '{{ zwave_device }}'
+      data:
+        parameter: 99
+        value:
+          '255': 255
+          '65280': '{{ humidity_intensity | int }}'
+          '16711680': '{{ humidity_color | int }}'
+          '4278190080': 12
+    - service: input_boolean.turn_on
+      target:
+        entity_id: '{{ humidity_led_owned }}'
+trigger_variables:
+  hold_trigger: !input 'automatic_hold_entity'
+  device_trigger: !input 'switch_device'
+condition:
+- '{{ trigger is defined and (trigger.id not in [''humidity_on'', ''humidity_off'', ''humidity_reconcile'', ''humidity_restore'']
+  or (humidity_enabled and automatic_hold and humidity_led_owned and is_state(timer, ''idle'') and (this.attributes.current
+  | int(0)) == 0)) }}'
